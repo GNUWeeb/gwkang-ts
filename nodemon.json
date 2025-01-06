@@ -1,0 +1,6 @@
+{
+        "watch": ["src/*"],
+        "ext": "ts",
+        "ignore": ["*.spec.ts", "*.txt"],
+        "exec": ["dotenvx run -f .env.development -- ts-node ./src/main.ts"]
+}
