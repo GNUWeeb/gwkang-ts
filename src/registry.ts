@@ -6,7 +6,7 @@ import debug from './commands/debug';
 import { MiddlewareHandler, CommandHandler } from './core/types';
 import { model } from 'mongoose';
 import { UserSchema } from './models/user';
-import ungkang from './commands/ungkang';
+import unkang from './commands/unkang';
 import toImage from './commands/toimage';
 
 export const middlewares: MiddlewareHandler[] = [
@@ -20,7 +20,7 @@ export const commands: CommandHandler[] = [
   kang,
   debug,
   toImage,
-  ungkang,
+  unkang,
   // Add more commands here
 ];
 

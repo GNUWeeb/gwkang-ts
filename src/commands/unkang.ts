@@ -43,9 +43,9 @@ const removeStickerFromSet = async (ctx: CommandContext<Context>): Promise<void>
   }
 };
 
-const ungkangCommand = createCommand(
+const unkangCommand = createCommand(
   {
-    name: 'ungkang',
+    name: 'unkang',
     description: 'Remove a sticker from your stickerpack',
   },
   async ctx => {
@@ -57,4 +57,4 @@ const ungkangCommand = createCommand(
   }
 );
 
-export default ungkangCommand;
+export default unkangCommand;
