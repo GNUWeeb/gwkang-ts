@@ -4,6 +4,7 @@ import { ReplyParameters } from 'grammy/types';
 const debugCommand = createCommand(
   {
     name: 'debug',
+    alias: [],
     description: 'send the json',
   },
   async ctx => {

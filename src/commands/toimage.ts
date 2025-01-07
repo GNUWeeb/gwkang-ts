@@ -49,6 +49,7 @@ const convertStickerToImage = async (ctx: CommandContext<Context>): Promise<void
 const toImageCommand = createCommand(
   {
     name: 'toimage',
+    alias: ['ts', 'toimg'],
     description: 'Convert a sticker to image',
   },
   async ctx => {

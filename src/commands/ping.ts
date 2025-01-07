@@ -3,6 +3,7 @@ import { createCommand } from '../utils/command';
 const ping = createCommand(
   {
     name: 'ping',
+    alias: [],
     description: 'Check if bot is alive',
   },
   async ctx => {

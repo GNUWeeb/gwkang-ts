@@ -227,6 +227,7 @@ const kangFromImage = async (ctx: CommandContext<Context>): Promise<void> => {
 const kangCommand = createCommand(
   {
     name: 'kang',
+    alias: [],
     description: 'Kanging other user sticker',
   },
   async ctx => {
