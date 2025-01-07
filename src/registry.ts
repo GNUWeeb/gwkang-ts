@@ -1,11 +1,13 @@
 import rateLimit from './middleware/rateLimit';
 import ping from './commands/ping';
 import start from './commands/start';
-import kangCommand from './commands/kang';
-import debugCommand from './commands/debug';
+import kang from './commands/kang';
+import debug from './commands/debug';
 import { MiddlewareHandler, CommandHandler } from './core/types';
 import { model } from 'mongoose';
 import { UserSchema } from './models/user';
+import ungkang from './commands/ungkang';
+import toImage from './commands/toimage';
 
 export const middlewares: MiddlewareHandler[] = [
   rateLimit,
@@ -15,8 +17,10 @@ export const middlewares: MiddlewareHandler[] = [
 export const commands: CommandHandler[] = [
   ping,
   start,
-  kangCommand,
-  debugCommand
+  kang,
+  debug,
+  toImage,
+  ungkang,
   // Add more commands here
 ];
 
