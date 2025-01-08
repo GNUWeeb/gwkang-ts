@@ -1,9 +1,19 @@
 import { CommandContext, Context } from 'grammy';
+import * as emoji from 'node-emoji'
+import GraphemeSplitter from 'grapheme-splitter';
+import containsEmoji from 'contains-emoji';
 import path from 'path';
 
 export interface IStickerpackData {
-  stickerTitle: string;
+  stickerTitle: string | null;
   stickerName: string;
+  emoji: string[];
+}
+
+export interface IEmojiSanitizeResult {
+  msg: string;
+  code: number;
+  splitted: string[];
 }
 
 export class BotHelpers extends String {
@@ -18,19 +28,23 @@ export class BotHelpers extends String {
    * @returns promise of IStickerpackData, which contained sticker title and sticker name respectively
    *
    * @beta
+   * 
+   * convention: a_{index}_{user_id}_by_{botname}{
+   * example: a_1_5892885430_by_nekonakobot
+   * 
+   * so we can use index in order to refer corresponding sticker}
    */
-  public static async genRandomStickerpackName(
-    ctx: CommandContext<Context>
+  public static async genStickerpackName(
+    ctx: CommandContext<Context>, stickerIndex: number
   ): Promise<IStickerpackData> {
-    let currentTime: number = this.unix();
 
     let myUsername = await ctx.api.getMe();
 
     let data: IStickerpackData = {} as IStickerpackData;
 
     if (ctx.message?.sender_chat != undefined) {
-      data.stickerTitle = `Sticker ${ctx.message.sender_chat.title}`;
-      data.stickerName = `a${ctx.message.sender_chat.id}_on_${currentTime}_by_${myUsername.username}`;
+      data.stickerTitle = `Sticker #${stickerIndex} ${ctx.message.sender_chat.title}`;
+      data.stickerName = `a_${stickerIndex}_${ctx.message.sender_chat.id}_by_${myUsername.username}`;
 
       return data;
     }
@@ -40,11 +54,11 @@ export class BotHelpers extends String {
     */
 
     if (ctx.message?.from.last_name === undefined) {
-      data.stickerTitle = `Sticker ${ctx.message?.from.first_name}`;
-      data.stickerName = `a${ctx.message?.from.id}_on_${currentTime}_by_${myUsername.username}`;
+      data.stickerTitle = `Sticker #${stickerIndex} ${ctx.message?.from.first_name}`;
+      data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
     } else {
-      data.stickerTitle = `Sticker ${ctx.message?.from.first_name} ${ctx.message?.from.last_name}`;
-      data.stickerName = `a${ctx.message?.from.id}_on_${currentTime}_by_${myUsername.username}`;
+      data.stickerTitle = `Sticker #${stickerIndex} ${ctx.message?.from.first_name} ${ctx.message?.from.last_name}`;
+      data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
     }
 
     return data;
@@ -55,5 +69,54 @@ export class BotHelpers extends String {
     let random: string = (Math.random() + 1).toString(36).substring(7);
 
     return `${random}${ext}`;
+  }
+
+  /**
+   * 
+   * @param str input string
+   * return -1 of string is invalid
+   */
+  public static async validateEmojiString(str: string): Promise<IEmojiSanitizeResult> {
+    let splitter: GraphemeSplitter = new GraphemeSplitter();
+
+    let data = splitter.splitGraphemes(str);
+
+    let result: IEmojiSanitizeResult = {} as IEmojiSanitizeResult;
+
+    result.code = 0;
+    result.splitted = data;
+
+    if (data)
+
+      for (let i = 0; i < data.length; i++) {
+        if (!containsEmoji(data[i])) {
+          result.msg = "the sticker emoji is must be emoji, not a text";
+          result.code = -1;
+        }
+      }
+    return result;
+  }
+
+  public static isInt(value: any): boolean {
+    return !isNaN(Number(value)) && value.trim() !== '';
+  }
+
+  public static getValueFromCommands(str: string): string | null {
+    let split: any = str.split(" ")
+
+    let rawArr: string[] = []
+    split.forEach((cmd, i) => {
+      if (i != 0) {
+        rawArr.push(cmd)
+      } else {
+        //pass
+      }
+    })
+
+    if (rawArr.length == 0) {
+      return null;
+    } else {
+      return rawArr.join(' ')
+    }
   }
 }

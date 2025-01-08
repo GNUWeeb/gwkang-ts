@@ -4,6 +4,7 @@ import { IUser } from '../models/user';
 const start = createCommand(
   {
     name: 'start',
+    alias: [],
     description: 'Start the bot',
   },
   async ctx => {

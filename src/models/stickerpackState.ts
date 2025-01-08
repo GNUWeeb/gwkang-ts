@@ -1,5 +1,8 @@
 import { Schema, model } from 'mongoose';
 
+/**
+ * this models represent current active, you can /kang without any parameters
+ */
 const stickerpackStateSchema = new Schema(
   {
     user_id: { type: Number, required: true },
