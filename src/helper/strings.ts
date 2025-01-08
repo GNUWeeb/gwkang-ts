@@ -55,11 +55,10 @@ export class BotHelpers extends String {
 
     if (ctx.message?.from.last_name === undefined) {
       data.stickerTitle = `Sticker #${stickerIndex} ${ctx.message?.from.first_name}`;
-      data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
     } else {
       data.stickerTitle = `Sticker #${stickerIndex} ${ctx.message?.from.first_name} ${ctx.message?.from.last_name}`;
-      data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
     }
+    data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
 
     return data;
   }
@@ -79,7 +78,7 @@ export class BotHelpers extends String {
   public static async validateEmojiString(str: string): Promise<IEmojiSanitizeResult> {
     let splitter: GraphemeSplitter = new GraphemeSplitter();
 
-    let data = splitter.splitGraphemes(str);
+    let data: string[] = splitter.splitGraphemes(str);
 
     let result: IEmojiSanitizeResult = {} as IEmojiSanitizeResult;
 
@@ -87,7 +86,6 @@ export class BotHelpers extends String {
     result.splitted = data;
 
     if (data)
-
       for (let i = 0; i < data.length; i++) {
         if (!containsEmoji(data[i])) {
           result.msg = "the sticker emoji is must be emoji, not a text";
@@ -97,7 +95,7 @@ export class BotHelpers extends String {
     return result;
   }
 
-  public static isInt(value: any): boolean {
+  public static isInt(value: string): boolean {
     return !isNaN(Number(value)) && value.trim() !== '';
   }
 
@@ -105,12 +103,10 @@ export class BotHelpers extends String {
     let split: any = str.split(" ")
 
     let rawArr: string[] = []
-    split.forEach((cmd, i) => {
+    split.forEach((cmd: string, i: number) => {
       if (i != 0) {
         rawArr.push(cmd)
-      } else {
-        //pass
-      }
+      } 
     })
 
     if (rawArr.length == 0) {

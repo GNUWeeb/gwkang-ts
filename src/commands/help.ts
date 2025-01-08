@@ -7,7 +7,6 @@ import { InlineKeyboard } from 'grammy';
 const help = createCommand(
   {
     name: 'help',
-    alias: [],
     description: 'show all command',
   },
   async ctx => {

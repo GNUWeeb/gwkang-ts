@@ -14,7 +14,7 @@ export interface BaseModel extends Document {
  */
 export interface CommandOptions {
   name: string;
-  alias: string[],
+  alias?: string[];
   description: string;
 }
 
@@ -24,7 +24,7 @@ export interface CommandOptions {
 export interface CommandMetadata {
   name: string;
   description: string;
-  alias: string[],
+  alias?: string[],
   handler: CommandHandler;
 }
 

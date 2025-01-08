@@ -30,14 +30,12 @@ const createNewStickerpack = async (
   ];
 
   /* return true on success */
-  let ret: boolean = await ctx.api.createNewStickerSet(
+  return await ctx.api.createNewStickerSet(
     ctx.message?.from.id!,
     stickerdata.stickerName,
     stickerdata.stickerTitle!,
     input
   );
-
-  return ret
 };
 
 const addStickerPack = async (
@@ -51,22 +49,23 @@ const addStickerPack = async (
     format: 'static',
   };
 
-  let ret: boolean = await ctx.api.addStickerToSet(ctx.message?.from.id!,
+  return await ctx.api.addStickerToSet(ctx.message?.from.id!,
     prevStickerData.stickerName,
     input);
-
-  return ret;
 };
 
-const kangFromSticker = async (ctx: CommandContext<Context>, prevStickerData: IStickerpackData): Promise<void> => {
+const kangFromSticker = async (
+  ctx: CommandContext<Context>, 
+  prevStickerData: IStickerpackData
+): Promise<void> => {
   /* setup reply id */
   let replyparam: ReplyParameters = {
     message_id: ctx.message?.message_id!,
   };
 
   /* 
-      find current used sticker
-    */
+    find current used sticker
+  */
 
   const StickerpackStateDoc = await stickerpackStateModel.findOne({
     user_id: ctx.message?.from.id!,
@@ -154,7 +153,10 @@ const processImage = async (fileName: string): Promise<string> => {
   return outImage;
 };
 
-const kangFromImage = async (ctx: CommandContext<Context>, prevStickerData: IStickerpackData): Promise<void> => {
+const kangFromImage = async (ctx: CommandContext<Context>, 
+  prevStickerData: IStickerpackData
+): Promise<void> => {
+
   /* setup reply id */
   let replyparam: ReplyParameters = {
     message_id: ctx.message?.message_id!,
@@ -162,7 +164,7 @@ const kangFromImage = async (ctx: CommandContext<Context>, prevStickerData: ISti
 
   /* send sticker first */
 
-  const largestphoto = await ctx.message?.reply_to_message?.photo?.pop();
+  const largestphoto = ctx.message?.reply_to_message?.photo?.pop();
   const file = await ctx.api.getFile(largestphoto?.file_id!);
 
   let tempData = await downloadFileToTemp(
@@ -248,28 +250,28 @@ const parseInput = async (ctx: CommandContext<Context>): Promise<IStickerpackDat
   let splitted: string[] = ctx.message?.text.split(' ')!;
   let commandValue = BotHelpers.getValueFromCommands(ctx.message?.text!)
 
-  /* do not touch */
-  let stickerPackIdx: number = 1; // default value, 0 when unspesified
+  /**
+   * do not touch
+   * 
+   * 1 is default value, 0 when unspesified
+   */
+  let stickerPackIdx: number = 1;
 
-
-
-  /* handle emoji in args 2 */
   if (splitted.length == 3) {
-    /* index 
- 
-    1: pack number
-    2: emoji
-    */
-
+    /**
+     * index structure
+     * 1: pack number
+     * 2: emoji
+     */
     let result: IEmojiSanitizeResult = await BotHelpers.validateEmojiString(splitted[2]);
     if (result.code == -1) {
       throw new EmojiInputInvalid();
-
-      /* sticker generation failed, due invalid emojis */
     } else {
       data.emoji = result.splitted
 
-      /* handle error when /pack abc ❤️ */
+      /**
+       * handle error when pack such "/pack abc ❤️"
+       */
       if (BotHelpers.isInt(splitted[1])) {
         stickerPackIdx = parseInt(splitted[1]);
       } else {
@@ -278,56 +280,48 @@ const parseInput = async (ctx: CommandContext<Context>): Promise<IStickerpackDat
 
     }
   } else if (splitted.length == 2) {
-    /* index 
- 
-    1: can be pack number or emoji
-    */
-    /* if emoji, use default pack, and split the emoji */
+    /**
+     * index 
+     * 
+     * 1: can be pack number or emoji
+     * if emoji present, use default pack, and split the emoji
+     * 
+     * and use 😁 as default emoji
+     */
     let testEmoji: IEmojiSanitizeResult = await BotHelpers.validateEmojiString(splitted[1]);
-    console.log(testEmoji.code)
     if (testEmoji.code == -1) {
-      /* do not throw an exception, probably arg 1 is a pack number */
       if (BotHelpers.isInt(splitted[1])) {
         stickerPackIdx = parseInt(splitted[1]);
-
-        /* use default emoji */
         data.emoji = ['😁']
       } else {
-        // throw invalid here, because the first arg is not an emoji, also not a integer
         throw new KangInputInvalid()
       }
     } else {
-
       if (BotHelpers.isInt(splitted[1])) {
         stickerPackIdx = parseInt(splitted[1]);
-
-        /* use default emoji */
         data.emoji = ['😁']
       } else {
-        // console.log("taken")
         data.emoji = testEmoji.splitted
       }
-
-      /* stickerPackIdx is unchanged */
     }
   } else if (splitted.length == 1) {
     data.emoji = ['😁']
   } else {
-    // handle unexpected args here (future)
+    throw new KangInputInvalid()
   }
 
-  /* search for the data */
   const StickerpackStateDoc = await stickerpackStateModel.findOne({
     user_id: ctx.message?.from.id!,
   });
 
   if (StickerpackStateDoc === null) {
-    /* 
-    * data not found, generate new, sticker title is essential for generation 
-    * do not care about index, new sticker always start from 1
-    */
+    /**
+     * data not found, generate new, sticker title is essential for generation 
+     * do not care about index, new sticker always start from 1
+     * 
+     * then replace the prev data with new one
+     */
     let newlyGeneratedData: IStickerpackData = await BotHelpers.genStickerpackName(ctx, 1);
-    /* re-pack */
 
     data.stickerName = newlyGeneratedData.stickerName
     data.stickerTitle = newlyGeneratedData.stickerTitle
@@ -335,45 +329,26 @@ const parseInput = async (ctx: CommandContext<Context>): Promise<IStickerpackDat
     return data
   } else {
     if (commandValue == null) {
-      /* no info or emoji provided, use default emoji and sticker */
+      /**
+       * handle when no args is provided, use default mode
+       * 
+       * in this section, sticker title might unused, because telegram already hold it
+       */
 
-      /* in this section, sticker title might unused, because telegram already hold it 
-       * sticker title only used in generation process
-      */
-
-      // let data: IStickerpackData = {
-      //     stickerTitle: null,
-      //     stickerName: StickerpackStateDoc?.current!,
-      //     emoji: ['😁']
-      // }
-      // console.log("commandvalue == null taken")
       data.stickerTitle = null;
       data.stickerName = StickerpackStateDoc?.current!
       data.emoji = ['😁']
 
       return data
     } else {
-
-      /* already parsed in first function */
-
+      /**
+       * already parsed in first session, where stickerpackIdx is separated
+       */
       let predicted: IStickerpackData = await BotHelpers.genStickerpackName(ctx, stickerPackIdx);
-      // console.log("index: " + stickerPackIdx)
-
-      /* find it, return true if found */
       let isFound: boolean = await apiHelper.checkStickerPack(ctx, predicted.stickerName);
       if (isFound) {
-
-        /* in this section, sticker title maybe unused, because telegram already hold it 
-        * sticker title only used in generation process
-        */
-
-        // let data: IStickerpackData = {
-        //     stickerTitle: null,
-        //     stickerName: predicted.stickerName!,
-        // }
         data.stickerTitle = null;
         data.stickerName = predicted.stickerName;
-        /* no emoji, already filled */
 
         return data;
       } else {
@@ -387,7 +362,6 @@ const parseInput = async (ctx: CommandContext<Context>): Promise<IStickerpackDat
 const kangCommand = createCommand(
   {
     name: 'kang',
-    alias: [],
     description: 'Kanging other user sticker',
   },
   async ctx => {
@@ -399,13 +373,9 @@ const kangCommand = createCommand(
       let replyparam: ReplyParameters = {
         message_id: ctx.message?.message_id!,
       };
-      // console.log("aa")
 
       try {
         let stickerDataPredicted: IStickerpackData = await parseInput(ctx);
-
-        // console.log(stickerDataPredicted)
-
         if (
           ctx.message?.reply_to_message?.sticker! != undefined &&
           ctx.message?.reply_to_message?.photo == undefined

@@ -20,7 +20,7 @@ export async function registerCommands(bot: Bot<Context>): Promise<void> {
   for (const [name, metadata] of commands) {
     bot.command(name, ctx => metadata.handler(ctx));
 
-    if (metadata.alias.length != 0) {
+    if (metadata.alias != undefined) {
       metadata.alias.map((aliasCommand: string): void => {
         bot.command(aliasCommand, ctx => metadata.handler(ctx));
       })
