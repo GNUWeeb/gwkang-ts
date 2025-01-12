@@ -8,6 +8,14 @@ export interface IStickerpackData {
   stickerTitle: string | null;
   stickerName: string;
   emoji: string[];
+
+  sticker_idx: number;
+}
+
+export interface IStickerpackDataReversed {
+  index: number;
+  user_id: number;
+  by_bot: string;
 }
 
 export interface IEmojiSanitizeResult {
@@ -61,6 +69,24 @@ export class BotHelpers extends String {
     data.stickerName = `a_${stickerIndex}_${ctx.message?.from.id}_by_${myUsername.username}`;
 
     return data;
+  }
+
+
+  /**
+   * turn back 'a_1_5892885430_by_nekonakobot'
+   */
+  public static async reverseStickerpackName(
+    stickername: string
+  ): Promise<IStickerpackDataReversed> {
+
+    let data: string[] = stickername.split('_');
+    let ret: IStickerpackDataReversed = {} as IStickerpackDataReversed;
+
+    ret.index = parseInt(data[1]);
+    ret.user_id = parseInt(data[2]);
+    ret.by_bot = data[4];
+
+    return ret;
   }
 
   public static genRandomFileName(str: string): string {

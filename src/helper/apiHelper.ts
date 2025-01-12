@@ -11,7 +11,7 @@ export class apiHelper {
     try {
 
       const stickerSet = await ctx.api.getStickerSet(stickerPackName);
-      console.log("Sticker pack found:", stickerSet);
+      
       return true
     } catch (error: any) {
       if (error.description && error.description.includes("STICKERSET_INVALID")) {
@@ -22,5 +22,10 @@ export class apiHelper {
       }
       return false
     }
+  }
+
+  public static async countCurrentPack(ctx: CommandContext<Context>, stickerPackName: string): Promise<number> {
+    
+    return (await ctx.api.getStickerSet(stickerPackName)).stickers.length;
   }
 }
