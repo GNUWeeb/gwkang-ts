@@ -9,6 +9,7 @@ import { UserSchema } from './models/user';
 import unkang from './commands/unkang';
 import toImage from './commands/toimage';
 import help from './commands/help';
+import packinfo from './commands/packinfo';
 
 export const middlewares: MiddlewareHandler[] = [
   rateLimit,
@@ -23,6 +24,7 @@ export const commands: CommandHandler[] = [
   toImage,
   unkang,
   help,
+  packinfo,
   // Add more commands here
 ];
 
