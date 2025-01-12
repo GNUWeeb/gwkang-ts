@@ -7,7 +7,12 @@ const invalidInput = async (ctx: CommandContext<Context>) => {
     message_id: ctx.message?.message_id!,
   };
 
-  await ctx.reply('the input is invalid, you need to reply to a sticker', {
+  await ctx.reply(
+    'the input is invalid, you need to reply to a sticker. \n\n' + 
+    '- /kang: (will use default packs, fast and easy)\n' + 
+    '- /kang <pack_id>: kang to spesific sticker ID\n' + 
+    '- /kang <emoji>: kang to default sticker with spesific emoji\n' + 
+    '- /kang <packid> <emoji>: kang to spesific sticker ID and gives them emoji', {
     reply_parameters: replyparam,
   });
 };
