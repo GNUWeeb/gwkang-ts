@@ -20,18 +20,24 @@ const help = createCommand(
     data.map((cmd) => {
       rawString = rawString + `/${cmd.name}: ${cmd.description}`
 
-      if (cmd.alias.length != 0) {
-        rawString = rawString + ', alias '
-
-        cmd.alias.map((aliascmd, i) => {
-
-          if (cmd.alias.length == i + 1) {
-            rawString = rawString + `/${aliascmd}`
-          } else {
-            rawString = rawString + `/${aliascmd}, `
-          }
-        })
+      if (cmd.alias != undefined) {
+        if (cmd.alias.length != 0) {
+          rawString = rawString + ', alias '
+  
+          cmd.alias.map((aliascmd, i) => {
+            
+            if (cmd.alias != undefined) {
+              if (cmd.alias.length == i + 1) {
+                rawString = rawString + `/${aliascmd}`
+              } else {
+                rawString = rawString + `/${aliascmd}, `
+              }
+            }
+            
+          })
+        }
       }
+      
 
       rawString = rawString + '\n'
     })
