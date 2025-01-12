@@ -10,6 +10,12 @@ export interface IStickerpackData {
   emoji: string[];
 
   sticker_idx: number;
+
+  /**
+   * this prop represent sticker is custom requested or not
+   * just like /kang or /kang 4
+   */
+  synthetic_req_stickerpack: boolean;
 }
 
 export interface IStickerpackDataReversed {

@@ -1,5 +1,8 @@
 import { createCommand } from '../utils/command';
-import { invalidInput, kangStickerRequestedNotFound } from '../helper/errors';
+import { 
+    invalidInput, 
+    kangStickerRequestedNotFound
+} from '../helper/errors';
 import { stickerpackStateModel } from '../models/stickerpackState';
 import { CommandContext, Context, GrammyError } from 'grammy';
 import { InputFile, InputSticker, Message } from 'grammy/types';
@@ -12,18 +15,19 @@ import { StickerRequestedNotFound } from '../error/stickerRequestedNotFound';
 import { EmojiInputInvalid } from '../error/EmojiInputInvalid';
 import { IndexPackInvalid } from '../error/IndexPackInvalid';
 import { KangInputInvalid } from '../error/KangInputInvalid';
+import { StickerTooMuchSynteticTrue } from '../error/stickerTooMuch';
 import { logger } from '../utils/logger';
 
-interface stickerPackManagementCacheData {
-    packIsFound: boolean; /* represents current pack is found or not */
+interface tgCallErrcode {
+    code: number;
+    description?: string;
+
+    err?: Error;
 }
 
 class stickerPackManagement {
     private ctx: CommandContext<Context>;
     private data: IStickerpackData = {} as IStickerpackData;
-    private cacheData: stickerPackManagementCacheData = {
-        packIsFound: false
-    } as stickerPackManagementCacheData;
 
     constructor(ctx: CommandContext<Context>) {
         this.ctx = ctx;
@@ -56,8 +60,6 @@ class stickerPackManagement {
             }
         }
 
-        console.log(highest)
-
         return highest;
     }
 
@@ -85,41 +87,112 @@ class stickerPackManagement {
         )
     }
 
+    private async removeStickerSetFromUID(user_id: number, stickersetName: string) {
+        let old = await stickerpackStateModel.findOne({
+            user_id: user_id
+        });
+
+        let repackArr: string[] = old?.stickersetname!;
+        const index = repackArr.indexOf(stickersetName);
+        if (index > -1) { // only splice array when item is found
+            repackArr.splice(index, 1); // 2nd parameter means remove one item only
+        }
+
+        await stickerpackStateModel.updateOne(
+            {
+                user_id: user_id
+            },
+            {
+                stickersetname: repackArr
+            }
+        )
+    }
+
     private async addStickerToPack(stickerFileId: string):
-        Promise<boolean> {
+        Promise<tgCallErrcode> {
         let input: InputSticker = {
             sticker: stickerFileId!,
             emoji_list: this.data.emoji,
             format: 'static',
         };
 
-        return await this.ctx.api.addStickerToSet(
-            this.ctx.message?.from.id!,
-            this.data.stickerName,
-            input
-        );
+        try {
+            await this.ctx.api.addStickerToSet(
+                this.ctx.message?.from.id!,
+                this.data.stickerName,
+                input
+            );
+
+            let ret: tgCallErrcode = {
+                code: 0,
+            }
+
+            return ret
+        } catch (err: any) {
+            if (err instanceof GrammyError) {
+                let ret: tgCallErrcode = {
+                    code: err.error_code,
+                    description: err.description,
+                    err: err
+                }
+                return ret;
+            } else {
+                let ret: tgCallErrcode = {
+                    code: -1,
+                    description: "unknown",
+                    err: err
+                }
+
+                return ret;
+            }
+        }
     }
 
     private async createNewStickerpack(
         stickerFileId: string,
-    ): Promise<boolean> {
+    ): Promise<tgCallErrcode> {
         // let stickerData: IStickerpackData = await BotHelpers.genRandomStickerpackName(ctx);
 
-        let input: InputSticker[] = [
-            {
-                sticker: stickerFileId!,
-                emoji_list: this.data.emoji, // test
-                format: 'static',
-            },
-        ];
+        try {
+            let input: InputSticker[] = [
+                {
+                    sticker: stickerFileId!,
+                    emoji_list: this.data.emoji, // test
+                    format: 'static',
+                },
+            ];
 
-        /* return true on success */
-        return await this.ctx.api.createNewStickerSet(
-            this.ctx.message?.from.id!,
-            this.data.stickerName,
-            this.data.stickerTitle!,
-            input
-        );
+            /* return true on success */
+            await this.ctx.api.createNewStickerSet(
+                this.ctx.message?.from.id!,
+                this.data.stickerName,
+                this.data.stickerTitle!,
+                input
+            );
+
+            let ret: tgCallErrcode = {
+                code: 0
+            }
+
+            return ret
+        } catch (err: any) {
+            if (err instanceof GrammyError) {
+                let ret: tgCallErrcode = {
+                    code: err.error_code,
+                    description: err.description,
+                    err: err
+                }
+                return ret;
+            } else {
+                let ret: tgCallErrcode = {
+                    code: -1,
+                    description: "unknown",
+                    err: err
+                }
+
+                return ret;
+            }
+        }
     };
 
     private async getIncreasedIdx(): Promise<IStickerpackData> {
@@ -157,6 +230,7 @@ class stickerPackManagement {
     public async parseInput(): Promise<this> {
 
         this.data = {} as IStickerpackData;
+        this.data.synthetic_req_stickerpack = true;
         let splitted: string[] = this.ctx.message?.text.split(' ')!;
         let commandValue = BotHelpers.getValueFromCommands(this.ctx.message?.text!)
 
@@ -213,6 +287,7 @@ class stickerPackManagement {
                     this.data.emoji = ['😁']
                 } else {
                     this.data.emoji = testEmoji.splitted
+                    this.data.synthetic_req_stickerpack = false;
                     // use highest idx
                 }
             }
@@ -257,9 +332,9 @@ class stickerPackManagement {
                 this.data.stickerName = await this.getHighestStickerpackName(StickerpackStateDoc.stickersetname);
                 this.data.emoji = ['😁']
                 this.data.sticker_idx = await this.findCurrentHighestIdx(StickerpackStateDoc.stickersetname);
+                this.data.synthetic_req_stickerpack = false;
 
                 /* in this section, the sticker is always found, except if removed by users */
-                this.cacheData.packIsFound = await apiHelper.checkStickerPack(this.ctx, this.data.stickerName);
 
                 return this
             } else {
@@ -268,13 +343,16 @@ class stickerPackManagement {
                  * also get highest value of stickerpackdx
                  */
 
+                if (this.data.synthetic_req_stickerpack == false) {
+                    stickerPackIdx = await this.findCurrentHighestIdx(StickerpackStateDoc.stickersetname);
+                }
+
                 let predicted: IStickerpackData = await BotHelpers.genStickerpackName(this.ctx, stickerPackIdx);
                 let isFound: boolean = await apiHelper.checkStickerPack(this.ctx, predicted.stickerName);
                 if (isFound) {
                     this.data.stickerTitle = null;
                     this.data.stickerName = predicted.stickerName;
                     this.data.sticker_idx = stickerPackIdx;
-                    this.cacheData.packIsFound = isFound;
 
                     return this;
                 } else {
@@ -290,52 +368,72 @@ class stickerPackManagement {
     }
 
     public async addStickerToSetORCreate(stickerFileId: string): Promise<boolean> {
-        if (this.cacheData.packIsFound) {
-            try {
-                let ret = await this.addStickerToPack(stickerFileId);
-                return ret
-            } catch (err: any) {
-                if (err instanceof GrammyError) {
-                    if (err.description == "Bad Request: STICKERS_TOO_MUCH") {
-                        await this.getIncreasedIdx()
+        let ret: tgCallErrcode = {} as tgCallErrcode;
 
-                        
-                        let ret = await this.createNewStickerpack(stickerFileId);
+        while (1) {
+            let tgServerSideFoundSticker: boolean = await apiHelper.checkStickerPack(this.ctx, this.data.stickerName);
+            let localFoundSticker: boolean = await apiHelper.checkStickerPackDB(this.ctx, this.data.stickerName);
 
-                        if (ret) {
-                            await this.appendNewStickerSetToUID(
-                                this.ctx.message?.from.id!,
-                                this.data.stickerName!
-                            );
-
-                        }
-                        return ret;
-                    }
-                }
-            }
-
-        } else {
             /**
-             * create sticker here, and append to new list
+             * this section help syncing database in case database loss
              */
-            try {
-                let ret = await this.createNewStickerpack(stickerFileId);
+            if (tgServerSideFoundSticker == true && localFoundSticker == true) {
+                ret = await this.addStickerToPack(stickerFileId);
+                if (ret.code == 0) {
+                    return true;
+                }
 
-                if (ret) {
+            } else if (tgServerSideFoundSticker == true && localFoundSticker == false) {
+                /**
+                 * create completion
+                 */
+                await this.appendNewStickerSetToUID(
+                    this.ctx.message?.from.id!,
+                    this.data.stickerName!
+                );
+
+                ret = await this.addStickerToPack(stickerFileId);
+                if (ret.code == 0) {
+                    return true;
+                }
+
+            } else if (tgServerSideFoundSticker == false && localFoundSticker == true) {
+                /**
+                 * malformed data, need to delete
+                 */
+                await this.removeStickerSetFromUID(
+                    this.ctx.message?.from.id!,
+                    this.data.stickerName!
+                )
+            } else if (tgServerSideFoundSticker == false && localFoundSticker == false) {
+                ret = await this.createNewStickerpack(stickerFileId);
+                if (ret.code == 0) {
                     await this.appendNewStickerSetToUID(
                         this.ctx.message?.from.id!,
                         this.data.stickerName!
                     );
 
-                }
-                return ret;
-            } catch (err: any) {
-                if (err instanceof GrammyError) {
-                    console.log(err)
+                    return true;
                 }
             }
 
+            if (this.data.synthetic_req_stickerpack == false && 
+                (
+                    ret.description == "Bad Request: STICKERS_TOO_MUCH" ||
+                    ret.description == "Bad Request: sticker set name is already occupied"
+                )
+            ) {
+                await this.getIncreasedIdx()
+            } else if (this.data.synthetic_req_stickerpack == true) {
+                if (ret.description == "Bad Request: STICKERS_TOO_MUCH") {
+                    throw new StickerTooMuchSynteticTrue();
+                }
+                // console.trace(ret)
+            } else {
+                console.log(ret)
+            }
 
+         
         }
 
         return true;
@@ -383,9 +481,7 @@ const kangCommand = createCommand(
                 let stickerManagementCtx: stickerPackManagement = new stickerPackManagement(ctx);
                 await stickerManagementCtx.parseInput();
 
-                await ctx.reply(JSON.stringify(stickerManagementCtx.exportStickerData()), {
-                    reply_parameters: replyparam
-                })
+               
                 if (
                     ctx.message?.reply_to_message?.sticker! != undefined &&
                     ctx.message?.reply_to_message?.photo == undefined
