@@ -2,7 +2,7 @@ import { createCommand } from '../utils/command';
 import { CommandContext, Context } from 'grammy';
 import { BotHelpers, IStickerpackDataReversed } from '../helper/strings';
 import { stickerpackStateModel } from '../models/stickerpackState';
-
+import { ReplyParameters } from 'grammy/types';
 
 const showAvailablePacks = async (ctx: CommandContext<Context>): Promise<void> => {
 
