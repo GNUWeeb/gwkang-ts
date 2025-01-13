@@ -10,6 +10,7 @@ import unkang from './commands/unkang';
 import toImage from './commands/toimage';
 import help from './commands/help';
 import packinfo from './commands/packinfo';
+import mypacksCommand from './commands/mypack';
 
 export const middlewares: MiddlewareHandler[] = [
   rateLimit,
@@ -25,6 +26,7 @@ export const commands: CommandHandler[] = [
   unkang,
   help,
   packinfo,
+  mypacksCommand,
   // Add more commands here
 ];
 
