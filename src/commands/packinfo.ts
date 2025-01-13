@@ -8,7 +8,7 @@ import { InlineKeyboard } from 'grammy';
 const packinfo = createCommand(
   {
     name: 'packinfo',
-    description: 'show all command',
+    description: 'Show information about stickerpack pack',
   },
   async ctx => {
     let replyparam: ReplyParameters = {
