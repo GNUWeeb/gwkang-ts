@@ -5,6 +5,7 @@ import { middlewares } from '../registry';
 import { logger } from '../utils/logger';
 import { GwKangOptions, Context } from './types';
 import { getCommands, registerCommands } from '../utils/command';
+import { hydrateFiles } from "@grammyjs/files";
 
 async function setupCommands(bot: Bot<Context>, options: GwKangOptions): Promise<void> {
   if (options.setMyCommands) {
@@ -38,6 +39,8 @@ async function initializeDatabase(bot: Bot<Context>): Promise<void> {
 
 export async function createBot(options: GwKangOptions = {}): Promise<Bot<Context>> {
   const bot = new Bot<Context>(config.BOT_TOKEN, options.bot);
+
+  bot.api.config.use(hydrateFiles(config.BOT_TOKEN));
 
   await initializeDatabase(bot);
   await setupMiddlewares(bot);

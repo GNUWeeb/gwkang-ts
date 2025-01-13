@@ -1,5 +1,6 @@
 import { Context as BaseContext, Middleware, BotConfig, CommandContext } from 'grammy';
 import { Connection, Document } from 'mongoose';
+import { type FileFlavor } from "@grammyjs/files";
 
 /**
  * Base model interface for all database models
@@ -38,7 +39,8 @@ export interface GwContext {
 /**
  * Extended Context type with GwKang features
  */
-export type Context = BaseContext & GwContext;
+type GwBaseContext = BaseContext & GwContext;
+export type Context = FileFlavor<GwBaseContext>
 
 /**
  * Command handler function type
