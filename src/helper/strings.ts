@@ -81,9 +81,9 @@ export class BotHelpers extends String {
   /**
    * turn back 'a_1_5892885430_by_nekonakobot'
    */
-  public static async reverseStickerpackName(
+  public static reverseStickerpackName(
     stickername: string
-  ): Promise<IStickerpackDataReversed> {
+  ): IStickerpackDataReversed {
 
     let data: string[] = stickername.split('_');
     let ret: IStickerpackDataReversed = {} as IStickerpackDataReversed;

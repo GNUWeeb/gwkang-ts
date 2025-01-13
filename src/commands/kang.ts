@@ -53,7 +53,7 @@ class stickerPackManagement {
         let highest = 1;
 
         for (let i = 0; i < stickerNameArr.length; i++) {
-            let reversedData: IStickerpackDataReversed = await BotHelpers.reverseStickerpackName(stickerNameArr[i]);
+            let reversedData: IStickerpackDataReversed = BotHelpers.reverseStickerpackName(stickerNameArr[i]);
 
             if (reversedData.index > highest) {
                 highest = reversedData.index
