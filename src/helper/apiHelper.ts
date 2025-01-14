@@ -1,5 +1,8 @@
 import { CommandContext, Context } from 'grammy';
 import { stickerpackStateModel } from '../models/stickerpackState';
+import fs from 'fs';
+import * as FormData from 'form-data'
+import axios from 'axios';
 
 export class apiHelper {
   /**
