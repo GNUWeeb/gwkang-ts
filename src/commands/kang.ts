@@ -1,6 +1,6 @@
 import { createCommand } from '../utils/command';
-import { 
-    invalidInput, 
+import {
+    invalidInput,
     kangStickerRequestedNotFound
 } from '../helper/errors';
 import { stickerpackStateModel } from '../models/stickerpackState';
@@ -53,7 +53,7 @@ class stickerPackManagement {
         let highest = 1;
 
         for (let i = 0; i < stickerNameArr.length; i++) {
-            let reversedData: IStickerpackDataReversed = await BotHelpers.reverseStickerpackName(stickerNameArr[i]);
+            let reversedData: IStickerpackDataReversed = BotHelpers.reverseStickerpackName(stickerNameArr[i]);
 
             if (reversedData.index > highest) {
                 highest = reversedData.index
@@ -314,6 +314,14 @@ class stickerPackManagement {
             this.data.stickerTitle = newlyGeneratedData.stickerTitle
             this.data.sticker_idx = 1
 
+            /* check prev synthehtic flags */
+            if (commandValue == null) {
+                this.data.synthetic_req_stickerpack = false;
+            } else {
+                this.data.synthetic_req_stickerpack = true;
+            }
+            
+
             await this.modelCreateRecordFirstTime(newlyGeneratedData)
             /**
              * now, db and runtime is synced!
@@ -417,7 +425,7 @@ class stickerPackManagement {
                 }
             }
 
-            if (this.data.synthetic_req_stickerpack == false && 
+            if (this.data.synthetic_req_stickerpack == false &&
                 (
                     ret.description == "Bad Request: STICKERS_TOO_MUCH" ||
                     ret.description == "Bad Request: sticker set name is already occupied"
@@ -427,13 +435,21 @@ class stickerPackManagement {
             } else if (this.data.synthetic_req_stickerpack == true) {
                 if (ret.description == "Bad Request: STICKERS_TOO_MUCH") {
                     throw new StickerTooMuchSynteticTrue();
+                } else {
+                    // another error
+                    throw new Error(
+                        ret.description
+                    )
                 }
                 // console.trace(ret)
             } else {
-                console.log(ret)
+                // console.log(ret)
+                throw new Error(
+                    ret.description
+                )
             }
 
-         
+
         }
 
         return true;
@@ -450,6 +466,70 @@ const kangFromSticker = async (
     };
 
     await stickerManagementCtx.addStickerToSetORCreate(ctx.message?.reply_to_message?.sticker?.file_id!)
+
+    let stickerData: IStickerpackData = await stickerManagementCtx.exportStickerData();
+
+    await ctx.reply(
+        `New sticker <a href='https://t.me/addstickers/${stickerData.stickerName}'>#pack_${stickerData.sticker_idx}</a> Kanged!`,
+        {
+            reply_parameters: replyparam,
+            parse_mode: 'HTML',
+        }
+    );
+};
+
+/**
+ * return image path of resized image
+ *
+ * @param fileName
+ */
+const processImage = async (fileName: string): Promise<string> => {
+    const imgctx = await sharp(fileName).metadata();
+
+    let width: number = imgctx.width!;
+    let height: number = imgctx.height!;
+
+    let new_width = 0;
+    let new_height = 0;
+
+    if (width > height) {
+        new_width = 512;
+        new_height = Math.floor((512 / width) * height);
+    } else {
+        new_height = 512;
+        new_width = Math.floor((512 / height) * width);
+    }
+
+    let outImage: string = `/tmp/${BotHelpers.genRandomFileName(fileName)}`;
+
+    await sharp(fileName).resize(new_width, new_height).toFile(outImage);
+
+    return outImage;
+};
+
+
+const kangFromImage = async (
+    ctx: CommandContext<Context>,
+    stickerManagementCtx: stickerPackManagement
+): Promise<void> => {
+    /* setup reply id */
+    let replyparam: ReplyParameters = {
+        message_id: ctx.message?.message_id!,
+    };
+
+    const largestphoto = ctx.message?.reply_to_message?.photo?.pop();
+    const file: any = await ctx.api.getFile(largestphoto?.file_id!);
+
+    const tempDataPath = await file.download();
+
+    let resizedImage = await processImage(tempDataPath);
+
+    let sentSticker: Message = await ctx.api.sendSticker(
+        ctx.message?.chat.id!,
+        new InputFile(resizedImage)
+    );
+
+    await stickerManagementCtx.addStickerToSetORCreate(sentSticker.sticker?.file_id!)
 
     let stickerData: IStickerpackData = await stickerManagementCtx.exportStickerData();
 
@@ -481,21 +561,21 @@ const kangCommand = createCommand(
                 let stickerManagementCtx: stickerPackManagement = new stickerPackManagement(ctx);
                 await stickerManagementCtx.parseInput();
 
-               
+
                 if (
                     ctx.message?.reply_to_message?.sticker! != undefined &&
                     ctx.message?.reply_to_message?.photo == undefined
                 ) {
                     await kangFromSticker(ctx, stickerManagementCtx);
                 }
-                //  else if (
-                //     ctx.message?.reply_to_message?.photo != undefined &&
-                //     ctx.message?.reply_to_message?.sticker == undefined
-                // ) {
-                //     await kangFromImage(ctx, stickerDataPredicted);
-                // } else {
-                //     await invalidInput(ctx);
-                // }
+                else if (
+                    ctx.message?.reply_to_message?.photo != undefined &&
+                    ctx.message?.reply_to_message?.sticker == undefined
+                ) {
+                    await kangFromImage(ctx, stickerManagementCtx);
+                } else {
+                    await invalidInput(ctx);
+                }
             } catch (err: any) {
                 console.log(err)
                 await ctx.reply(err.message, {

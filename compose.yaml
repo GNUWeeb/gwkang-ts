@@ -1,0 +1,4 @@
+services:
+  gwkang_prod:
+    build: .
+    network_mode: host

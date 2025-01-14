@@ -6,4 +6,5 @@ export const config = {
   MONGODB_URI: getEnv('MONGODB_URI', true),
   RATE_LIMIT: getEnv('RATE_LIMIT', false, '5'),
   RATE_LIMIT_WINDOW: getEnv('RATE_LIMIT_WINDOW', false, '10s'),
+  IMGBB_TOKEN: getEnv('IMGBB_TOKEN', true),
 } as const;
