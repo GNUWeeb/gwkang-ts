@@ -314,6 +314,14 @@ class stickerPackManagement {
             this.data.stickerTitle = newlyGeneratedData.stickerTitle
             this.data.sticker_idx = 1
 
+            /* check prev synthehtic flags */
+            if (commandValue == null) {
+                this.data.synthetic_req_stickerpack = false;
+            } else {
+                this.data.synthetic_req_stickerpack = true;
+            }
+            
+
             await this.modelCreateRecordFirstTime(newlyGeneratedData)
             /**
              * now, db and runtime is synced!
@@ -427,10 +435,18 @@ class stickerPackManagement {
             } else if (this.data.synthetic_req_stickerpack == true) {
                 if (ret.description == "Bad Request: STICKERS_TOO_MUCH") {
                     throw new StickerTooMuchSynteticTrue();
+                } else {
+                    // another error
+                    throw new Error(
+                        ret.description
+                    )
                 }
                 // console.trace(ret)
             } else {
-                console.log(ret)
+                // console.log(ret)
+                throw new Error(
+                    ret.description
+                )
             }
 
 
