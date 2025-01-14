@@ -11,6 +11,7 @@ import toImage from './commands/toimage';
 import help from './commands/help';
 import packinfo from './commands/packinfo';
 import mypacksCommand from './commands/mypack';
+import forksCommand from './commands/fork';
 
 export const middlewares: MiddlewareHandler[] = [
   rateLimit,
@@ -27,6 +28,7 @@ export const commands: CommandHandler[] = [
   help,
   packinfo,
   mypacksCommand,
+  forksCommand,
   // Add more commands here
 ];
 
