@@ -3,6 +3,15 @@ import { invalidInput } from '../helper/errors';
 import { stickerpackStateModel } from '../models/stickerpackState';
 import { CommandContext, Context } from 'grammy';
 import { ReplyParameters } from 'grammy/types';
+import { dbHelper } from '../helper/dbHelper';
+
+const sanitizeIsEmpty = async (ctx: CommandContext<Context>, setName: string): Promise<void> => {
+  let res = await ctx.api.getStickerSet(setName);
+  console.log(res)
+  if (res.stickers.length == 0) {
+    await dbHelper.removeStickerSetFromUID(ctx.message?.from.id!, setName);
+  }
+}
 
 const removeStickerFromSet = async (ctx: CommandContext<Context>): Promise<void> => {
   let replyparam: ReplyParameters = {
@@ -14,7 +23,7 @@ const removeStickerFromSet = async (ctx: CommandContext<Context>): Promise<void>
     user_id: ctx.message?.from.id!,
   });
 
-  if (!StickerpackStateDoc) {
+  if (StickerpackStateDoc?.stickersetname.length == 0) {
     await ctx.reply("You don't have any active stickerpack!", {
       reply_parameters: replyparam,
     });
@@ -36,6 +45,10 @@ const removeStickerFromSet = async (ctx: CommandContext<Context>): Promise<void>
     await ctx.reply('Sticker successfully removed from the pack!', {
       reply_parameters: replyparam,
     });
+
+    await sanitizeIsEmpty(ctx, ctx.message?.reply_to_message?.sticker?.set_name!);
+
+
   } catch (error) {
     await ctx.reply('Failed to remove sticker from pack. Make sure you own this stickerpack!', {
       reply_parameters: replyparam,

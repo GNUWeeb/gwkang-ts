@@ -1,14 +1,12 @@
 import { createCommand } from '../utils/command';
 import {
     invalidInput,
-    kangStickerRequestedNotFound
 } from '../helper/errors';
 import { stickerpackStateModel } from '../models/stickerpackState';
 import { CommandContext, Context, GrammyError } from 'grammy';
 import { InputFile, InputSticker, Message } from 'grammy/types';
 import { BotHelpers, IStickerpackData, IEmojiSanitizeResult, IStickerpackDataReversed } from '../helper/strings';
 import { apiHelper } from '../helper/apiHelper';
-import { downloadFileToTemp } from '../helper/io';
 import sharp from 'sharp';
 import { ReplyParameters } from 'grammy/types';
 import { StickerRequestedNotFound } from '../error/stickerRequestedNotFound';
@@ -16,7 +14,10 @@ import { EmojiInputInvalid } from '../error/EmojiInputInvalid';
 import { IndexPackInvalid } from '../error/IndexPackInvalid';
 import { KangInputInvalid } from '../error/KangInputInvalid';
 import { StickerTooMuchSynteticTrue } from '../error/stickerTooMuch';
-import { logger } from '../utils/logger';
+import { dbHelper } from '../helper/dbHelper';
+import axios from "axios";
+import * as fs from "fs";
+import { FileStorage } from '../helper/io';
 
 interface tgCallErrcode {
     code: number;
@@ -67,45 +68,6 @@ class stickerPackManagement {
         let highestIdx = await this.findCurrentHighestIdx(stickerNameArr);
         let generatedName: IStickerpackData = await BotHelpers.genStickerpackName(this.ctx, highestIdx);
         return generatedName.stickerName
-    }
-
-    private async appendNewStickerSetToUID(user_id: number, newStickersetName: string) {
-        let old = await stickerpackStateModel.findOne({
-            user_id: user_id
-        });
-
-        let newAppendSticker: string[] = old?.stickersetname!;
-        newAppendSticker.push(newStickersetName!);
-
-        await stickerpackStateModel.updateOne(
-            {
-                user_id: user_id
-            },
-            {
-                stickersetname: newAppendSticker
-            }
-        )
-    }
-
-    private async removeStickerSetFromUID(user_id: number, stickersetName: string) {
-        let old = await stickerpackStateModel.findOne({
-            user_id: user_id
-        });
-
-        let repackArr: string[] = old?.stickersetname!;
-        const index = repackArr.indexOf(stickersetName);
-        if (index > -1) { // only splice array when item is found
-            repackArr.splice(index, 1); // 2nd parameter means remove one item only
-        }
-
-        await stickerpackStateModel.updateOne(
-            {
-                user_id: user_id
-            },
-            {
-                stickersetname: repackArr
-            }
-        )
     }
 
     private async addStickerToPack(stickerFileId: string):
@@ -320,7 +282,7 @@ class stickerPackManagement {
             } else {
                 this.data.synthetic_req_stickerpack = true;
             }
-            
+
 
             await this.modelCreateRecordFirstTime(newlyGeneratedData)
             /**
@@ -395,7 +357,7 @@ class stickerPackManagement {
                 /**
                  * create completion
                  */
-                await this.appendNewStickerSetToUID(
+                await dbHelper.appendNewStickerSetToUID(
                     this.ctx.message?.from.id!,
                     this.data.stickerName!
                 );
@@ -409,14 +371,14 @@ class stickerPackManagement {
                 /**
                  * malformed data, need to delete
                  */
-                await this.removeStickerSetFromUID(
+                await dbHelper.removeStickerSetFromUID(
                     this.ctx.message?.from.id!,
                     this.data.stickerName!
                 )
             } else if (tgServerSideFoundSticker == false && localFoundSticker == false) {
                 ret = await this.createNewStickerpack(stickerFileId);
                 if (ret.code == 0) {
-                    await this.appendNewStickerSetToUID(
+                    await dbHelper.appendNewStickerSetToUID(
                         this.ctx.message?.from.id!,
                         this.data.stickerName!
                     );
@@ -507,22 +469,14 @@ const processImage = async (fileName: string): Promise<string> => {
     return outImage;
 };
 
-
-const kangFromImage = async (
-    ctx: CommandContext<Context>,
-    stickerManagementCtx: stickerPackManagement
-): Promise<void> => {
-    /* setup reply id */
+const _kangFromImageLocals = async (ctx: CommandContext<Context>,
+    stickerManagementCtx: stickerPackManagement, path: string): Promise<void> =>
+{
     let replyparam: ReplyParameters = {
         message_id: ctx.message?.message_id!,
     };
 
-    const largestphoto = ctx.message?.reply_to_message?.photo?.pop();
-    const file: any = await ctx.api.getFile(largestphoto?.file_id!);
-
-    const tempDataPath = await file.download();
-
-    let resizedImage = await processImage(tempDataPath);
+    let resizedImage = await processImage(path);
 
     let sentSticker: Message = await ctx.api.sendSticker(
         ctx.message?.chat.id!,
@@ -540,7 +494,76 @@ const kangFromImage = async (
             parse_mode: 'HTML',
         }
     );
+}
+
+
+const kangFromImage = async (
+    ctx: CommandContext<Context>,
+    stickerManagementCtx: stickerPackManagement
+): Promise<void> => {
+    /* setup reply id */
+    
+
+    const largestphoto = ctx.message?.reply_to_message?.photo?.pop();
+    const file: any = await ctx.api.getFile(largestphoto?.file_id!);
+
+    const tempDataPath = await file.download();
+    await _kangFromImageLocals(ctx, stickerManagementCtx, tempDataPath)
+
 };
+
+const kangFromText = async (ctx: CommandContext<Context>,
+    stickerManagementCtx: stickerPackManagement
+): Promise<void> => {
+
+    let avatarUrl: string | null = null;
+
+    const avatarArr = await ctx.api.getUserProfilePhotos(ctx.message?.reply_to_message?.from?.id!)
+
+    if (avatarArr.photos.length != 0) {
+        const avatarFile: any = await ctx.api.getFile(avatarArr.photos[0].pop()?.file_id!)
+        avatarUrl = avatarFile.getUrl()
+    } else {
+        avatarUrl = null
+    }
+
+    const json = {
+        "type": "quote",
+        "format": "png",
+        "backgroundColor": "#FFFFFF",
+        "width": 512,
+        "height": 768,
+        "scale": 2,
+        "messages": [
+            {
+                "entities": [],
+                "avatar": true,
+                "from": {
+                    "id": 1,
+                    "name": BotHelpers.normalizeName(ctx),
+                    "photo": {
+                        "url": avatarUrl
+                    }
+                },
+                "text": ctx.message?.reply_to_message?.text!,
+                "replyMessage": {}
+            }
+        ]
+    };
+    const response = axios.post('https://bot.lyo.su/quote/generate', json, {
+        headers: { 'Content-Type': 'application/json' }
+    }).then(async (res) => {
+        const buffer = Buffer.from(res.data.result.image, 'base64')
+
+        let bufCtx = new FileStorage("/tmp")
+        let path: string = await bufCtx.storeFileRand(buffer)
+
+        await _kangFromImageLocals(ctx, stickerManagementCtx, path)
+        await bufCtx.removeFile(path)
+
+
+    })
+}
 
 const kangCommand = createCommand(
     {
@@ -573,6 +596,10 @@ const kangCommand = createCommand(
                     ctx.message?.reply_to_message?.sticker == undefined
                 ) {
                     await kangFromImage(ctx, stickerManagementCtx);
+                } else if (
+                    ctx.message?.reply_to_message?.text != undefined
+                ) {
+                    await kangFromText(ctx, stickerManagementCtx);
                 } else {
                     await invalidInput(ctx);
                 }
