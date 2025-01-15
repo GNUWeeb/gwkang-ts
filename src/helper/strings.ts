@@ -138,13 +138,21 @@ export class BotHelpers extends String {
     split.forEach((cmd: string, i: number) => {
       if (i != 0) {
         rawArr.push(cmd)
-      } 
+      }
     })
 
     if (rawArr.length == 0) {
       return null;
     } else {
       return rawArr.join(' ')
+    }
+  }
+
+  public static normalizeName(ctx: CommandContext<Context>): string {
+    if (ctx.message?.reply_to_message?.from?.last_name == undefined) {
+      return ctx.message?.reply_to_message?.from?.first_name!;
+    }else {
+      return `${ctx.message?.reply_to_message?.from?.first_name} ${ctx.message?.reply_to_message?.from?.last_name}`
     }
   }
 }

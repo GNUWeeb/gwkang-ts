@@ -2,6 +2,7 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { BotHelpers } from './strings';
 
 export const downloadFileToTemp = async (url: string, filename?: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -32,3 +33,48 @@ export const downloadFileToTemp = async (url: string, filename?: string): Promis
     });
   });
 };
+
+
+export class FileStorage {
+  private storageDir: string;
+
+  constructor(storageDir: string) {
+    this.storageDir = storageDir;
+
+    // Ensure the storage directory exists
+    if (!fs.existsSync(this.storageDir)) {
+      fs.mkdirSync(this.storageDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Store a file from a Buffer.
+   * @param fileName The name of the file to store.
+   * @param buffer The Buffer containing file data.
+   */
+  public async storeFile(fileName: string, buffer: Buffer): Promise<void> {
+    const filePath = path.join(this.storageDir, fileName);
+    return fs.promises.writeFile(filePath, buffer);
+  }
+
+  public async storeFileRand(buffer: Buffer) 
+  {
+    let fileName: string = BotHelpers.genRandomFileName("result.png");
+    await this.storeFile(fileName, buffer)
+
+    const filePath = path.join(this.storageDir, fileName)
+    return filePath;
+  }
+
+  /**
+   * Remove a stored file.
+   * @param fileName The name of the file to remove.
+   */
+  public async removeFile(fileName: string): Promise<void> {
+    if (fs.existsSync(fileName)) {
+      return fs.promises.unlink(fileName);
+    } else {
+      throw new Error(`File "${fileName}" does not exist.`);
+    }
+  }
+}
