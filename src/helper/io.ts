@@ -59,7 +59,7 @@ export const createTempFileWithContent = async (content: string): Promise<string
           console.log('path/file.txt was deleted');
         });
         console.log(`Temporary file deleted: ${tempFilePath}`);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error deleting temporary file: ${error.message}`);
       }
     }, 5000); // Adjust the delay as needed (e.g., 5000ms = 5 seconds)
