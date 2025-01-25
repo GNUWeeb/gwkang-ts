@@ -151,8 +151,33 @@ export class BotHelpers extends String {
   public static normalizeName(ctx: CommandContext<Context>): string {
     if (ctx.message?.reply_to_message?.from?.last_name == undefined) {
       return ctx.message?.reply_to_message?.from?.first_name!;
-    }else {
+    } else {
       return `${ctx.message?.reply_to_message?.from?.first_name} ${ctx.message?.reply_to_message?.from?.last_name}`
     }
   }
+
+
+  /**
+   * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/Cyclic_object_value#examples
+   */
+  public static getCircularReplacer(): (key: string, value: any) => any {
+    const ancestors: any[] = [];
+    return function (this: any, key: string, value: any): any {
+      if (typeof value !== "object" || value === null) {
+        return value;
+      }
+      // `this` is the object that value is contained in,
+      // i.e., its direct parent.
+      while (ancestors.length > 0 && ancestors.at(-1) !== this) {
+        ancestors.pop();
+      }
+      if (ancestors.includes(value)) {
+        return "[Circular]";
+      }
+      ancestors.push(value);
+      return value;
+    };
+  }
+
+
 }

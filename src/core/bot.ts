@@ -1,4 +1,4 @@
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import { config } from '../utils/config';
 import { connectDatabase } from './database';
 import { middlewares } from '../registry';
@@ -6,6 +6,8 @@ import { logger } from '../utils/logger';
 import { GwKangOptions, Context } from './types';
 import { getCommands, registerCommands } from '../utils/command';
 import { hydrateFiles } from "@grammyjs/files";
+import { createTempFileWithContent } from '../helper/io';
+import { BotHelpers } from '../helper/strings';
 
 async function setupCommands(bot: Bot<Context>, options: GwKangOptions): Promise<void> {
   if (options.setMyCommands) {
@@ -37,6 +39,22 @@ async function initializeDatabase(bot: Bot<Context>): Promise<void> {
   logger.info('Successfully established database connection');
 }
 
+async function setupErrHandler(bot: Bot<Context>): Promise<void> {
+  bot.catch(async (err) => {
+
+    let errstr: string = 
+      `error message: ${String(err)}` +
+      `trace: ${String(err.stack)}` +
+      `details: ${JSON.stringify(err, BotHelpers.getCircularReplacer(), 2)}`.trim();
+
+    let path: string = await createTempFileWithContent(errstr);
+
+    let input: InputFile = new InputFile(path);
+
+    await err.ctx.api.sendDocument(config.ERR_REPORT_CHAT_ID, input);
+  })
+}
+
 export async function createBot(options: GwKangOptions = {}): Promise<Bot<Context>> {
   const bot = new Bot<Context>(config.BOT_TOKEN, options.bot);
 
@@ -45,6 +63,7 @@ export async function createBot(options: GwKangOptions = {}): Promise<Bot<Contex
   await initializeDatabase(bot);
   await setupMiddlewares(bot);
   await setupCommands(bot, options);
+  await setupErrHandler(bot);
   registerCommands(bot);
   logger.info('Successfully registered command handlers');
 
