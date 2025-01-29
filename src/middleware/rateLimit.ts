@@ -25,7 +25,7 @@ const rateLimit: MiddlewareHandler = async (ctx, next) => {
     return next();
   }
 
-  if (userLimit.count >= limit) {
+  if (userLimit.count >= limit && ctx.msg?.chat.type == "private") {
     const timeLeft = Math.ceil((userLimit.resetTime - now) / 1000);
     await ctx.reply(`Rate limit exceeded. Please wait ${timeLeft} seconds.`);
     return;
